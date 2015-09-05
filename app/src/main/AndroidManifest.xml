@@ -25,10 +25,6 @@ s
         </activity>
 
         <service
-            android:name=".MainService"
-            android:exported="false" >
-        </service>
-        <service
             android:name=".DriverService"
             android:enabled="true"
             android:exported="true" >

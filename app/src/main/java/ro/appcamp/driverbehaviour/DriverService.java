@@ -7,13 +7,21 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.sql.Timestamp;
 
 public class DriverService extends Service implements SensorEventListener{
     public DriverService() {
@@ -21,6 +29,13 @@ public class DriverService extends Service implements SensorEventListener{
 
     private SensorManager senSensorManager;
     private Sensor senAccelerometer;
+
+    LocationManager locManager;
+    LocationListener locListener;
+
+    private static JSONArray eventList;
+
+    private float globalSpeed;
 
     private long lastUpdate = 0;
     private float last_x, last_y, last_z;
@@ -41,23 +56,28 @@ public class DriverService extends Service implements SensorEventListener{
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             final String param1 = intent.getStringExtra(SIM_NR);
-            Log.d("SIM",param1);
+            Log.d("drvbehav", "SIM = " + param1);
 
+            eventList = new JSONArray();
 
             senSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
             senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
             senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
-           // String response = executePost(serverURL, "toSend");
+            locManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+            locListener = new speed();
+            try
+            {locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locListener);}
+            catch (Exception e)
+            {Log.d("drvbehav", "------->>>>> SPEED exception!!!!!");}
 
+           // String response = executePost(serverURL, "toSend");
         }
         return START_STICKY;
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-    }
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
@@ -77,22 +97,31 @@ public class DriverService extends Service implements SensorEventListener{
                 long diffTime = (curTime - lastUpdate);
                 lastUpdate = curTime;
 
-                float speed = Math.abs(x + y + z - last_x - last_y - last_z)/ diffTime * 10000;
+                float acc = Math.abs(x + y + z - last_x - last_y - last_z)/ diffTime * 10000;
 
-                Log.d("drvbehav", "BEFORE IF Acceleration : x = " + x + " ; y = " + y + " ; z = " + z);
-
-                if (speed > SHAKE_THRESHOLD)
+                Log.d("drvbehav", "CONTINUE_READ Acceleration : x = " + x + " ; y = " + y + " ; z = " + z);
+                if (acc > SHAKE_THRESHOLD)
                 {
                     Toast.makeText(getApplicationContext(), "Acceleration : x = " + x + " ; y = " + y + " ; z = " + z, Toast.LENGTH_LONG).show();
                     Log.d("drvbehav", "Acceleration : x = " + x + " ; y = " + y + " ; z = " + z);
-                }
 
+                    JSONObject event = new JSONObject();
+
+                    try
+                    {
+                        event.put("msisdn", SIM_NR);
+                        event.put("timestamp", new Timestamp(new java.util.Date().getTime()).toString());
+                        event.put("type", "acc");
+                        event.put("acc", Float.toString(acc));
+                        eventList.put(event);
+                    }
+                    catch (Exception e){}
+                }
                 last_x = x;
                 last_y = y;
                 last_z = z;
             }
         }
-
     }
 
 
@@ -146,6 +175,55 @@ public class DriverService extends Service implements SensorEventListener{
                 connection.disconnect();
             }
         }
+    }
+
+
+
+    class speed implements LocationListener {
+
+        @Override
+        public void onLocationChanged(Location loc) {
+
+            loc.getLatitude();
+            loc.getLongitude();
+
+            Float currentSpeed = loc.getSpeed() * (float)3.6;
+            Log.d("drvbehav", "CONTINUE_READ Speed : " + currentSpeed);
+
+            long curTime = System.currentTimeMillis();
+
+            if ((curTime - lastUpdate) > SAMPLE_RATE)
+            {
+                Log.d("drvbehav", "Speed : " + currentSpeed);
+                Toast.makeText(getApplicationContext(), "Speed : " + currentSpeed, Toast.LENGTH_SHORT).show();
+
+                globalSpeed = currentSpeed;
+
+                JSONObject event = new JSONObject();
+
+                try
+                {
+                    event.put("msisdn", SIM_NR);
+                    event.put("timestamp", new Timestamp(new java.util.Date().getTime()).toString());
+                    event.put("type", "speed");
+                    event.put("value",  Float.toString(currentSpeed));
+                    eventList.put(event);
+                }
+                catch (Exception e){}
+            }
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            Log.d("drvbehav", "------->>>>> SPEED status changed");
+        }
+
+        @Override
+        public void onProviderDisabled(String arg0) {Log.d("drvbehav", "------->>>>> SPEED provider DISABLED");}
+
+
+        @Override
+        public void onProviderEnabled(String arg0) {Log.d("drvbehav", "------->>>>> SPEED provider ENABLED");}
     }
 
 }
