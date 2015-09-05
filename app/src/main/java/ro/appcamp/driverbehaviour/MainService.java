@@ -7,6 +7,11 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -21,6 +26,9 @@ public class MainService extends IntentService implements SensorEventListener {
 
     private SensorManager senSensorManager;
     private Sensor senAccelerometer;
+
+    LocationManager locManager;
+    LocationListener locListener;
 
     private long lastUpdate = 0;
     private float last_x, last_y, last_z;
@@ -117,9 +125,56 @@ public class MainService extends IntentService implements SensorEventListener {
     private void handleActionMain(String param1) {
         // TODO: Handle action Foo
 
-        senSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        //senSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+       // senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+       // senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        Log.d("drvbehav", "------->>>>> SPEED-----------");
+        locManager=(LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        Log.d("drvbehav", "------->>>>> SPEED-###########");
+        locListener = new speed();
+        try
+        {
+            Log.d("drvbehav", "------->>>>> SPEED request listener");
+            locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locListener);
+            Log.d("drvbehav", "------->>>>> SPEED request listener DONE");
+        }
+        catch (Exception e)
+        {Log.d("drvbehav", "------->>>>> SPEED exception!!!!!");}
+
+    }
+
+    class speed implements LocationListener {
+
+        @Override
+        public void onLocationChanged(Location loc) {
+
+            Log.d("drvbehav", "------->>>>> SPEED BEGIN");
+
+            loc.getLatitude();
+            loc.getLongitude();
+
+            Float currentSpeed = loc.getSpeed();
+            Log.d("drvbehav", "------->>>>> SPEED : " + currentSpeed);
+
+            long curTime = System.currentTimeMillis();
+
+           // if ((curTime - lastUpdate) > SAMPLE_RATE)
+            //{
+                Toast.makeText(getApplicationContext(), "------->>>>> SPEED : " + currentSpeed, Toast.LENGTH_SHORT).show();
+           // }
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            Log.d("drvbehav", "------->>>>> SPEED status changed");
+        }
+
+        @Override
+        public void onProviderDisabled(String arg0) {Log.d("drvbehav", "------->>>>> SPEED provider ENABLED");}
+
+
+        @Override
+        public void onProviderEnabled(String arg0) {Log.d("drvbehav", "------->>>>> SPEED provider ENABLED");}
     }
 
 
