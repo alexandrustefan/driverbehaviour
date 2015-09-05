@@ -21,8 +21,8 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v){
                 EditText input = (EditText) findViewById(R.id.editPhoneNr);
                 String strInputMsg = input.getText().toString();
-                Intent msgIntent = new Intent(MainActivity.this, MainService.class);
-                msgIntent.putExtra(MainService.SIM_NR, strInputMsg);
+                Intent msgIntent = new Intent(MainActivity.this, DriverService.class);
+                msgIntent.putExtra(DriverService.SIM_NR, strInputMsg);
                 startService(msgIntent);
                 finish();
             }
